@@ -13,6 +13,8 @@ def test_basic_split():
     node = StringSplitter()
     
     result, count = node.split_string("a,b,c", ",")
+    # With OUTPUT_IS_LIST, the function still returns a regular list
+    # ComfyUI handles the list wrapping/unwrapping
     assert isinstance(result, list), f"Should return list, got {type(result)}"
     assert result == ["a", "b", "c"], f"Expected ['a', 'b', 'c'], got {result}"
     assert count == 3, f"Expected count 3, got {count}"

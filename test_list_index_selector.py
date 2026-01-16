@@ -12,13 +12,16 @@ def test_basic_selection():
     """Test basic list item selection"""
     node = ListIndexSelector()
     
+    # With INPUT_IS_LIST, we pass the list directly (as ComfyUI would)
     test_list = ["a", "b", "c", "d"]
     
-    result, length = node.select_from_list(test_list, 0)
+    # Index and zero_indexed come as scalars in tests (ComfyUI wraps them as lists)
+    # But our function handles both cases
+    result, length = node.select_from_list(test_list, 0, True)
     assert result == "a", f"Expected 'a', got {result}"
     assert length == 4, f"Expected length 4, got {length}"
     
-    result, _ = node.select_from_list(test_list, 2)
+    result, _ = node.select_from_list(test_list, 2, True)
     assert result == "c", f"Expected 'c', got {result}"
     
     print("✓ test_basic_selection passed")
@@ -35,8 +38,8 @@ def test_with_string_splitter_output():
     # Split a string
     string_list, _ = splitter.split_string("10,25,42,100", ",")
     
-    # Select from the list
-    result, _ = selector.select_from_list(string_list, 2)
+    # Select from the list (passing as ComfyUI would)
+    result, _ = selector.select_from_list(string_list, 2, True)
     assert result == "42", f"Expected '42', got {result}"
     
     print("✓ test_with_string_splitter_output passed")
@@ -67,16 +70,16 @@ def test_different_types():
     node = ListIndexSelector()
     
     # String list
-    result, _ = node.select_from_list(["a", "b", "c"], 1)
+    result, _ = node.select_from_list(["a", "b", "c"], 1, True)
     assert result == "b", f"String list failed"
     
-    # Integer list
-    result, _ = node.select_from_list([10, 20, 30], 0)
-    assert result == 10, f"Integer list failed"
+    # Integer list (converted to strings by String Splitter in practice)
+    result, _ = node.select_from_list(["10", "20", "30"], 0, True)
+    assert result == "10", f"Integer string list failed"
     
-    # Mixed list
-    result, _ = node.select_from_list(["text", 42, True], 1)
-    assert result == 42, f"Mixed list failed"
+    # Mixed list (as strings)
+    result, _ = node.select_from_list(["text", "42", "true"], 1, True)
+    assert result == "42", f"Mixed list failed"
     
     print("✓ test_different_types passed")
 
@@ -88,13 +91,13 @@ def test_out_of_range():
     test_list = ["a", "b", "c"]
     
     # Index too high
-    result, length = node.select_from_list(test_list, 10)
-    assert result is None, f"Out of range should return None, got {result}"
+    result, length = node.select_from_list(test_list, 10, True)
+    assert result == "", f"Out of range should return empty string, got {result}"
     assert length == 3, f"Should still return correct length"
     
     # Negative with zero-indexing
-    result, _ = node.select_from_list(test_list, -1)
-    assert result is None, f"Negative index should return None"
+    result, _ = node.select_from_list(test_list, -1, True)
+    assert result == "", f"Negative index should return empty string"
     
     print("✓ test_out_of_range passed")
 
@@ -104,12 +107,12 @@ def test_edge_cases():
     node = ListIndexSelector()
     
     # Empty list
-    result, length = node.select_from_list([], 0)
-    assert result is None, f"Empty list should return None"
+    result, length = node.select_from_list([], 0, True)
+    assert result == "", f"Empty list should return empty string"
     assert length == 0
     
     # Single item list
-    result, length = node.select_from_list(["only"], 0)
+    result, length = node.select_from_list(["only"], 0, True)
     assert result == "only", f"Single item failed"
     assert length == 1
     
@@ -120,11 +123,12 @@ def test_return_types():
     """Validate return types"""
     node = ListIndexSelector()
     
-    result = node.select_from_list(["a", "b"], 0)
+    result = node.select_from_list(["a", "b"], 0, True)
     
     assert isinstance(result, tuple), f"Should return tuple"
     assert len(result) == 2, f"Should return 2 items"
-    # First item can be any type (*)
+    # First item should be string
+    assert isinstance(result[0], str), f"First item should be string"
     assert isinstance(result[1], int), f"Second item should be int"
     
     print("✓ test_return_types passed")

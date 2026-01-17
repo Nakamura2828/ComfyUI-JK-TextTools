@@ -119,8 +119,8 @@ def test_edge_cases():
     
     # Empty string
     result, count = node.select_by_index("", ",", 0)
-    assert result == "", f"Expected empty for empty string"
-    assert count == 1, f"Empty string splits to one empty item"
+    assert result == None, f"Expected empty for empty string"
+    assert count == 0, f"Empty string splits to zero empty items"
     
     # Single item
     result, count = node.select_by_index("only", ",", 0)
@@ -178,6 +178,24 @@ def test_input_types_structure():
     assert not extra, f"INPUT_TYPES has entries not in function: {extra}"
     
     print("✓ test_input_types_structure passed")
+
+def test_output_type_handling():
+    """Validate casting works vor various configured output_types"""
+    node = StringIndexSelector()
+    
+    # default as string
+    result, count = node.select_by_index("1,2,3", ",", 1)
+    assert isinstance(result, str), f"Expected string, got '{type(result)}'"
+
+    # casting to integer
+    result, count = node.select_by_index("1,2,3", ",", 1, output_type='INT')
+    assert isinstance(result, int), f"Expected integer, got '{type(result)}'"
+
+    # casting to integer
+    result, count = node.select_by_index("1,2,3", ",", 1, output_type='FLOAT')
+    assert isinstance(result, float), f"Expected float 2, got '{type(result)}'"
+    
+    print("✓ test_output_type_handling passed")
 
 
 def run_all_tests():

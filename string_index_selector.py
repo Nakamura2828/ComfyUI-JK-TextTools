@@ -5,6 +5,12 @@ Extract a single element from a delimited string by index.
 Perfect for loop iterations where you need the Nth item.
 """
 
+# wildcard trick is taken from pythongossss's & ImpactPack
+class AnyType(str):
+    def __ne__(self, __value: object) -> bool:
+        return False
+
+any_typ = AnyType("*")
 
 class StringIndexSelector:
     """
@@ -35,6 +41,7 @@ class StringIndexSelector:
                 "strip_whitespace": ("BOOLEAN", {
                     "default": True
                 }),
+                "output_type": (["STRING", "INT", "FLOAT"],),  # Type to cast to
             },
             "optional": {
                 "zero_indexed": ("BOOLEAN", {
@@ -43,12 +50,12 @@ class StringIndexSelector:
             }
         }
     
-    RETURN_TYPES = ("STRING", "INT")
+    RETURN_TYPES = (any_typ, "INT")
     RETURN_NAMES = ("selected_item", "item_count")
     FUNCTION = "select_by_index"
     CATEGORY = "JK-TextTools/string"
     
-    def select_by_index(self, text, delimiter, index, strip_whitespace=True, zero_indexed=True):
+    def select_by_index(self, text, delimiter, index, strip_whitespace=True, zero_indexed=True, output_type="STRING"):
         """
         Extract item at specified index from delimited string.
         
@@ -62,6 +69,23 @@ class StringIndexSelector:
         Returns:
             tuple: (selected_item, total_count)
         """
+
+        # Handle empty string edge case
+        if not text or (strip_whitespace and not text.strip()):
+            return (None, 0)
+        
+        # Process common escape sequences
+        # This allows typing \n in UI to get actual newlines
+        escape_map = {
+            '\\n': '\n',
+            '\\t': '\t',
+            '\\r': '\r',
+            '\\\\': '\\',
+        }
+
+        for escape_seq, actual_char in escape_map.items():
+            delimiter = delimiter.replace(escape_seq, actual_char)
+
         # Split the string
         items = text.split(delimiter)
         
@@ -78,6 +102,22 @@ class StringIndexSelector:
             return ("", len(items))
         
         selected = items[actual_index]
+
+        # Type casting
+        try:
+            if output_type == "INT":
+                selected = int(selected)
+            elif output_type == "FLOAT":
+                selected = float(selected)
+            # STRING is default, no casting needed
+        except ValueError as e:
+            # Provide helpful error message
+            raise ValueError(
+                f"Failed to convert item to {output_type}. "
+                f"Check that all items in '{text}' can be converted to {output_type}. "
+                f"Error: {e}"
+            )
+
         count = len(items)
         
         return (selected, count)

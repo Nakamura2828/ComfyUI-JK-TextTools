@@ -36,7 +36,7 @@ def test_all_detections():
     node = DetectionQuery()
     
     input_json = json.dumps(SAMPLE_DETECTIONS)
-    filtered_json, count, detection_list, _, is_valid, error = node.query_detections(
+    filtered_json, count, detection_list, _, _, is_valid, error = node.query_detections(
         input_json, 
         class_filter="*"
     )
@@ -53,7 +53,7 @@ def test_exact_class_match():
     node = DetectionQuery()
     
     input_json = json.dumps(SAMPLE_DETECTIONS)
-    filtered_json, count, detection_list, _, is_valid, error = node.query_detections(
+    filtered_json, count, detection_list, _, _, is_valid, error = node.query_detections(
         input_json,
         class_filter="CLASS1_LABEL"
     )
@@ -73,7 +73,7 @@ def test_wildcard_prefix():
     input_json = json.dumps(SAMPLE_DETECTIONS)
     
     # Match all CLASS1_* variants
-    filtered_json, count, detection_list, _, is_valid, error = node.query_detections(
+    filtered_json, count, detection_list, _, _, is_valid, error = node.query_detections(
         input_json,
         class_filter="CLASS1_*"
     )
@@ -95,7 +95,7 @@ def test_wildcard_suffix():
     input_json = json.dumps(SAMPLE_DETECTIONS)
     
     # Match all *_LABEL classes
-    filtered_json, count, detection_list, _, is_valid, error = node.query_detections(
+    filtered_json, count, detection_list, _, _, is_valid, error = node.query_detections(
         input_json,
         class_filter="*_LABEL"
     )
@@ -117,7 +117,7 @@ def test_score_filtering():
     input_json = json.dumps(SAMPLE_DETECTIONS)
     
     # Only high confidence (> 0.7)
-    filtered_json, count, detection_list, _, is_valid, error = node.query_detections(
+    filtered_json, count, detection_list, _, _, is_valid, error = node.query_detections(
         input_json,
         class_filter="*",
         min_score=0.7
@@ -140,7 +140,7 @@ def test_combined_filters():
     input_json = json.dumps(SAMPLE_DETECTIONS)
     
     # CLASS2_* with score > 0.77
-    filtered_json, count, detection_list, _, is_valid, error = node.query_detections(
+    filtered_json, count, detection_list, _, _, is_valid, error = node.query_detections(
         input_json,
         class_filter="CLASS2_*",
         min_score=0.77
@@ -163,7 +163,7 @@ def test_max_results():
     input_json = json.dumps(SAMPLE_DETECTIONS)
     
     # Get only first 2 results
-    filtered_json, count, detection_list, _, is_valid, error = node.query_detections(
+    filtered_json, count, detection_list, _, _, is_valid, error = node.query_detections(
         input_json,
         class_filter="*",
         max_results=2
@@ -182,7 +182,7 @@ def test_no_matches():
     input_json = json.dumps(SAMPLE_DETECTIONS)
     
     # Non-existent class
-    filtered_json, count, detection_list, _, is_valid, error = node.query_detections(
+    filtered_json, count, detection_list, _, _, is_valid, error = node.query_detections(
         input_json,
         class_filter="NONEXISTENT_CLASS"
     )
@@ -199,7 +199,7 @@ def test_json_output_format():
     node = DetectionQuery()
     
     input_json = json.dumps(SAMPLE_DETECTIONS)
-    filtered_json, count, detection_list, _, is_valid, error = node.query_detections(
+    filtered_json, count, detection_list, _, _, is_valid, error = node.query_detections(
         input_json,
         class_filter="CLASS1_LABEL"
     )
@@ -220,7 +220,7 @@ def test_detection_list_output():
     node = DetectionQuery()
     
     input_json = json.dumps(SAMPLE_DETECTIONS)
-    filtered_json, count, detection_list, _, is_valid, error = node.query_detections(
+    filtered_json, count, detection_list, _, _, is_valid, error = node.query_detections(
         input_json,
         class_filter="CLASS2_*"
     )
@@ -244,7 +244,7 @@ def test_invalid_json():
     node = DetectionQuery()
     
     invalid_json = '{"broken": invalid}'
-    filtered_json, count, detection_list, _, is_valid, error = node.query_detections(
+    filtered_json, count, detection_list, _, _, is_valid, error = node.query_detections(
         invalid_json,
         class_filter="*"
     )
@@ -267,7 +267,7 @@ def test_simple_list_format():
     ]
     
     input_json = json.dumps(simple_data)
-    filtered_json, count, detection_list, _, is_valid, error = node.query_detections(
+    filtered_json, count, detection_list, _, _, is_valid, error = node.query_detections(
         input_json,
         class_filter="CLASS1"
     )
@@ -292,7 +292,7 @@ def test_categorization_extraction():
     }]
     
     input_json = json.dumps(test_data)
-    _, _, _, cat_value, is_valid, _ = node.query_detections(
+    _, _, _, _, cat_value, is_valid, _ = node.query_detections(
         input_json,
         class_filter="*",
         categorization_field="is_dog"
@@ -304,7 +304,7 @@ def test_categorization_extraction():
     # Test with False value
     test_data[0]["is_dog"] = False
     input_json = json.dumps(test_data)
-    _, _, _, cat_value, _, _ = node.query_detections(
+    _, _, _, _, cat_value, _, _ = node.query_detections(
         input_json,
         class_filter="*",
         categorization_field="is_dog"
@@ -320,7 +320,7 @@ def test_categorization_field_not_found():
     node = DetectionQuery()
     
     input_json = json.dumps(SAMPLE_DETECTIONS)
-    _, _, _, cat_value, is_valid, _ = node.query_detections(
+    _, _, _, _, cat_value, is_valid, _ = node.query_detections(
         input_json,
         class_filter="*",
         categorization_field="nonexistent_field"
@@ -342,7 +342,7 @@ def test_categorization_with_different_types():
         "category": "animal"
     }]
     input_json = json.dumps(test_data)
-    _, _, _, cat_value, _, _ = node.query_detections(
+    _, _, _, _, cat_value, _, _ = node.query_detections(
         input_json, "*", categorization_field="category"
     )
     assert cat_value == "animal"
@@ -350,7 +350,7 @@ def test_categorization_with_different_types():
     # Number value
     test_data[0]["count"] = 42
     input_json = json.dumps(test_data)
-    _, _, _, cat_value, _, _ = node.query_detections(
+    _, _, _, _, cat_value, _, _ = node.query_detections(
         input_json, "*", categorization_field="count"
     )
     assert cat_value == 42
@@ -365,13 +365,14 @@ def test_return_types():
     result = node.query_detections(json.dumps(SAMPLE_DETECTIONS), "*")
     
     assert isinstance(result, tuple)
-    assert len(result) == 6, f"Should return 6 items, got {len(result)}"
+    assert len(result) == 7, f"Should return 7 items, got {len(result)}"
     assert isinstance(result[0], str), "filtered_json should be string"
     assert isinstance(result[1], int), "match_count should be int"
     assert isinstance(result[2], list), "detection_list should be list"
-    # result[3] is any_typ (categorization_value) - can be any type
-    assert isinstance(result[4], bool), "is_valid should be bool"
-    assert isinstance(result[5], str), "error_message should be string"
+    assert isinstance(result[3], list), "bbox_list should be list"
+    # result[4] is any_typ (categorization_value) - can be any type
+    assert isinstance(result[5], bool), "is_valid should be bool"
+    assert isinstance(result[6], str), "error_message should be string"
     
     print("✓ test_return_types passed")
 

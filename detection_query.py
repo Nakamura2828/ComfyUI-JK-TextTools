@@ -1,5 +1,5 @@
 """
-Detection Query Node for ComfyUI
+Detection Query Node for ComfyUI - UPDATED with bbox_list output
 
 Query detection results with class filtering, score thresholds, and wildcards.
 Designed for object detection/classification workflow outputs.
@@ -22,13 +22,7 @@ class DetectionQuery:
     Query detection results with filtering and wildcards.
     
     Filters detection data by class name (with wildcards) and confidence score.
-    Returns filtered results as both JSON and list for different workflow needs.
-    
-    Examples:
-        class_filter="CLASS1_LABEL" → exact match
-        class_filter="CLASS1_*" → all CLASS1 subclasses
-        class_filter="*" → all detections
-        class_filter="*_LABEL" → all classes ending with _LABEL
+    Returns filtered results as JSON, list, and bbox list for visualization.
     """
     
     @classmethod
@@ -40,7 +34,7 @@ class DetectionQuery:
                     "multiline": True
                 }),
                 "class_filter": ("STRING", {
-                    "default": "*",  # Default to all classes
+                    "default": "*",
                     "multiline": False
                 }),
             },
@@ -58,15 +52,15 @@ class DetectionQuery:
                     "step": 1
                 }),
                 "categorization_field": ("STRING", {
-                    "default": "",  # Empty = don't extract
+                    "default": "",
                     "multiline": False
                 }),
             }
         }
     
-    RETURN_TYPES = ("STRING", "INT", any_typ, any_typ, "BOOLEAN", "STRING")
-    RETURN_NAMES = ("filtered_json", "match_count", "detection_list", "categorization_value", "is_valid", "error_message")
-    OUTPUT_IS_LIST = (False, False, True, False, False, False)  # detection_list is a list
+    RETURN_TYPES = ("STRING", "INT", any_typ, "BBOX", any_typ, "BOOLEAN", "STRING")
+    RETURN_NAMES = ("filtered_json", "match_count", "detection_list", "bbox_list", "categorization_value", "is_valid", "error_message")
+    OUTPUT_IS_LIST = (False, False, True, True, False, False, False)  # detection_list AND bbox_list are lists
     FUNCTION = "query_detections"
     CATEGORY = "JK-TextTools/json"
     
@@ -79,35 +73,28 @@ class DetectionQuery:
             class_filter: Class name with wildcards (* and ?)
             min_score: Minimum confidence score (0.0-1.0)
             max_results: Maximum results to return (0 = unlimited)
-            categorization_field: Optional field name to extract (e.g., "is_dog", "categorization")
+            categorization_field: Optional field name to extract
             
         Returns:
-            tuple: (filtered_json, match_count, detection_list, categorization_value, is_valid, error_message)
+            tuple: (filtered_json, match_count, detection_list, bbox_list, categorization_value, is_valid, error_message)
         """
         try:
             # Parse JSON
             data = json.loads(json_string)
             
             # Handle common detection formats
-            # Format 1: [{"detect_result": [...], ...}]
-            # Format 2: {"detect_result": [...], ...}
-            # Format 3: [detection, detection, ...]
-            
             detections = []
-            root_object = None  # Store root object for categorization extraction
+            root_object = None
             
             if isinstance(data, list):
                 if len(data) > 0 and isinstance(data[0], dict):
                     if "detect_result" in data[0]:
-                        # Format 1: Wrapped in object with detect_result key
                         root_object = data[0]
                         detections = data[0]["detect_result"]
                     else:
-                        # Format 3: Direct list of detections
                         detections = data
             elif isinstance(data, dict):
                 if "detect_result" in data:
-                    # Format 2: Object with detect_result key
                     root_object = data
                     detections = data["detect_result"]
             
@@ -118,6 +105,8 @@ class DetectionQuery:
             
             # Filter detections
             filtered = []
+            bbox_list = []  # Collect bboxes as we filter
+            
             for detection in detections:
                 # Check if detection has required fields
                 if not isinstance(detection, dict):
@@ -137,17 +126,33 @@ class DetectionQuery:
                     continue
                 
                 filtered.append(detection)
+                
+                # Extract bbox if present
+                bbox = None
+                if "box" in detection:
+                    bbox = detection["box"]
+                elif "bbox" in detection:
+                    bbox = detection["bbox"]
+                
+                # Add to bbox_list in proper format
+                # For OUTPUT_IS_LIST, each bbox needs to be wrapped: [[x,y,w,h]]
+                if bbox and len(bbox) == 4:
+                    # Wrap each bbox in a list for BBOX format
+                    bbox_list.append([[int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])]])
+                else:
+                    # No valid bbox - add zeros (wrapped)
+                    bbox_list.append([[0, 0, 0, 0]])
             
             # Apply max_results limit
             if max_results > 0:
                 filtered = filtered[:max_results]
+                bbox_list = bbox_list[:max_results]
             
             # Prepare outputs
             count = len(filtered)
             
             # JSON output (wrapped in same format as input)
             if isinstance(data, list) and len(data) > 0 and "detect_result" in data[0]:
-                # Maintain original wrapper format
                 output_obj = {
                     "detect_result": filtered
                 }
@@ -158,18 +163,17 @@ class DetectionQuery:
                             output_obj[key] = value
                 filtered_json = json.dumps([output_obj], indent=2)
             else:
-                # Simple list format
                 filtered_json = json.dumps(filtered, indent=2)
             
             # List output (for iteration)
             detection_list = filtered  # OUTPUT_IS_LIST will handle this
             
-            return (filtered_json, count, detection_list, categorization_value, True, "")
+            return (filtered_json, count, detection_list, bbox_list, categorization_value, True, "")
             
         except json.JSONDecodeError as e:
             error_msg = f"JSON Error at line {e.lineno}, column {e.colno}: {e.msg}"
-            return ("[]", 0, [], None, False, error_msg)
+            return ("[]", 0, [], [], None, False, error_msg)
             
         except Exception as e:
             error_msg = f"Error: {str(e)}"
-            return ("[]", 0, [], None, False, error_msg)
+            return ("[]", 0, [], [], None, False, error_msg)

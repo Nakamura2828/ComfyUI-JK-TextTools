@@ -6,6 +6,12 @@ Run with: python test_detection_query.py
 
 import json
 import inspect
+import sys
+from pathlib import Path
+
+# Add parent directory to path to import node modules
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from detection_query import DetectionQuery
 
 

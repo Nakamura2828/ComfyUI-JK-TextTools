@@ -152,6 +152,111 @@ def test_input_types_structure():
     
     print("✓ test_input_types_structure passed")
 
+"""
+Additional tests for String Splitter type casting
+
+Add these to your existing test_string_splitter.py
+"""
+
+def test_int_casting():
+    """Test casting to integers"""
+    node = StringSplitter()
+    
+    # Basic int casting
+    result, count = node.split_string("10,25,42,100", ",", output_type="INT")
+    assert result == [10, 25, 42, 100], f"Expected [10, 25, 42, 100], got {result}"
+    assert all(isinstance(x, int) for x in result), "All items should be integers"
+    
+    # Negative numbers
+    result, _ = node.split_string("-5,0,5", ",", output_type="INT")
+    assert result == [-5, 0, 5], f"Expected [-5, 0, 5], got {result}"
+    
+    print("✓ test_int_casting passed")
+
+
+def test_float_casting():
+    """Test casting to floats"""
+    node = StringSplitter()
+    
+    # Basic float casting
+    result, count = node.split_string("1.5,2.0,3.14", ",", output_type="FLOAT")
+    assert result == [1.5, 2.0, 3.14], f"Expected [1.5, 2.0, 3.14], got {result}"
+    assert all(isinstance(x, float) for x in result), "All items should be floats"
+    
+    # Integers can be cast to float
+    result, _ = node.split_string("10,20,30", ",", output_type="FLOAT")
+    assert result == [10.0, 20.0, 30.0], f"Expected [10.0, 20.0, 30.0], got {result}"
+    
+    print("✓ test_float_casting passed")
+
+
+def test_string_output_type():
+    """Test explicit STRING output type"""
+    node = StringSplitter()
+    
+    # Should remain strings even if they look like numbers
+    result, _ = node.split_string("10,20,30", ",", output_type="STRING")
+    assert result == ["10", "20", "30"], f"Expected ['10', '20', '30'], got {result}"
+    assert all(isinstance(x, str) for x in result), "All items should be strings"
+    
+    print("✓ test_string_output_type passed")
+
+
+def test_invalid_int_casting():
+    """Test that invalid int casting raises proper error"""
+    node = StringSplitter()
+    
+    try:
+        node.split_string("10,abc,30", ",", output_type="INT")
+        assert False, "Should have raised ValueError"
+    except ValueError as e:
+        assert "Failed to convert" in str(e), "Error message should be helpful"
+    
+    print("✓ test_invalid_int_casting passed")
+
+
+def test_invalid_float_casting():
+    """Test that invalid float casting raises proper error"""
+    node = StringSplitter()
+    
+    try:
+        node.split_string("1.5,not_a_number,3.14", ",", output_type="FLOAT")
+        assert False, "Should have raised ValueError"
+    except ValueError as e:
+        assert "Failed to convert" in str(e), "Error message should be helpful"
+    
+    print("✓ test_invalid_float_casting passed")
+
+
+def test_empty_string_with_casting():
+    """Test empty string handling with type casting"""
+    node = StringSplitter()
+    
+    # Empty strings should be removed before casting
+    result, count = node.split_string("10,,20", ",", output_type="INT", remove_empty=True)
+    assert result == [10, 20], f"Expected [10, 20], got {result}"
+    assert count == 2
+    
+    # Without remove_empty, it should fail to cast empty string
+    try:
+        node.split_string("10,,20", ",", output_type="INT", remove_empty=False)
+        assert False, "Should fail to cast empty string to INT"
+    except ValueError:
+        pass  # Expected
+    
+    print("✓ test_empty_string_with_casting passed")
+
+
+def test_whitespace_with_casting():
+    """Test whitespace handling with numeric casting"""
+    node = StringSplitter()
+    
+    # Whitespace should be stripped before casting
+    result, _ = node.split_string(" 10 , 20 , 30 ", ",", strip_whitespace=True, output_type="INT")
+    assert result == [10, 20, 30], f"Expected [10, 20, 30], got {result}"
+    
+    print("✓ test_whitespace_with_casting passed")
+
 
 def run_all_tests():
     """Run all test functions"""
@@ -166,6 +271,14 @@ def run_all_tests():
         test_edge_cases()
         test_return_types()
         test_input_types_structure()
+
+        test_int_casting()
+        test_float_casting()
+        test_string_output_type()
+        test_invalid_int_casting()
+        test_invalid_float_casting()
+        test_empty_string_with_casting()
+        test_whitespace_with_casting()
         
         print("\n" + "="*50)
         print("✅ ALL TESTS PASSED!")

@@ -1,7 +1,7 @@
 """
 String Splitter Node for ComfyUI
 
-Splits a delimited string into a list that can be consumed by other nodes.
+Splits a delimited string into a list with optional type casting.
 """
 
 # wildcard trick is taken from pythongossss's & ImpactPack
@@ -11,16 +11,17 @@ class AnyType(str):
 
 any_typ = AnyType("*")
 
+
 class StringSplitter:
     """
-    Split a delimited string into a list of strings.
+    Split a delimited string into a list of strings, integers, or floats.
     
     Returns a list type that can be consumed by:
     - List iteration nodes
     - List index selector nodes
     - Other list-aware nodes
     
-    Example: "10,25,42,100" → ["10", "25", "42", "100"]
+    Example: "10,25,42,100" → [10, 25, 42, 100] (if output_type=INT)
     """
     
     @classmethod
@@ -38,33 +39,37 @@ class StringSplitter:
                 "strip_whitespace": ("BOOLEAN", {
                     "default": True
                 }),
+                "output_type": (["STRING", "INT", "FLOAT"],),  # Type to cast to
             },
             "optional": {
                 "remove_empty": ("BOOLEAN", {
-                    "default": False  # Remove empty strings from result
+                    "default": False
                 }),
             }
         }
     
-    # Try LIST as the output type
     RETURN_TYPES = (any_typ, "INT")
     RETURN_NAMES = ("list", "item_count")
-    OUTPUT_IS_LIST = (True,False)
+    OUTPUT_IS_LIST = (True, False)
     FUNCTION = "split_string"
     CATEGORY = "JK-TextTools/string"
     
-    def split_string(self, text, delimiter, strip_whitespace=True, remove_empty=False):
+    def split_string(self, text, delimiter, strip_whitespace=True, output_type="STRING", remove_empty=False):
         """
-        Split string into a list.
+        Split string into a list with optional type casting.
         
         Args:
             text: The delimited string
             delimiter: What to split on
             strip_whitespace: Clean up each item
+            output_type: Type to cast items to ("STRING", "INT", or "FLOAT")
             remove_empty: Remove empty strings from result
             
         Returns:
-            tuple: (list_of_strings, count)
+            tuple: (list_of_items, count)
+            
+        Raises:
+            ValueError: If type casting fails for any item
         """
         # Split the string
         items = text.split(delimiter)
@@ -73,9 +78,24 @@ class StringSplitter:
         if strip_whitespace:
             items = [item.strip() for item in items]
         
-        # Remove empty strings if requested
+        # Remove empty strings if requested (before type casting)
         if remove_empty:
             items = [item for item in items if item]
+        
+        # Type casting
+        try:
+            if output_type == "INT":
+                items = [int(item) for item in items]
+            elif output_type == "FLOAT":
+                items = [float(item) for item in items]
+            # STRING is default, no casting needed
+        except ValueError as e:
+            # Provide helpful error message
+            raise ValueError(
+                f"Failed to convert item to {output_type}. "
+                f"Check that all items in '{text}' can be converted to {output_type}. "
+                f"Error: {e}"
+            )
         
         count = len(items)
         

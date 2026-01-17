@@ -44,6 +44,44 @@ def test_with_string_splitter_output():
     
     print("✓ test_with_string_splitter_output passed")
 
+def test_with_int_splitter_output():
+    """Test using INT output from String Splitter"""
+    from string_splitter import StringSplitter
+    
+    splitter = StringSplitter()
+    selector = ListIndexSelector()
+    
+    # Split with INT casting
+    int_list, _ = splitter.split_string("10,25,42,100", ",", output_type="INT")
+    
+    # Verify it's actually integers
+    assert all(isinstance(x, int) for x in int_list), "Splitter should return ints"
+    
+    # Select from the list
+    result, _ = selector.select_from_list(int_list, 2, True)
+    assert result == 42, f"Expected 42, got {result}"
+    assert isinstance(result, int), f"Should return int, got {type(result)}"
+    
+    print("✓ test_with_int_splitter_output passed")
+
+
+def test_with_float_splitter_output():
+    """Test using FLOAT output from String Splitter"""
+    from string_splitter import StringSplitter
+    
+    splitter = StringSplitter()
+    selector = ListIndexSelector()
+    
+    # Split with FLOAT casting
+    float_list, _ = splitter.split_string("1.5,2.0,3.14", ",", output_type="FLOAT")
+    
+    # Select from the list
+    result, _ = selector.select_from_list(float_list, 1, True)
+    assert result == 2.0, f"Expected 2.0, got {result}"
+    assert isinstance(result, float), f"Should return float, got {type(result)}"
+    
+    print("✓ test_with_float_splitter_output passed")
+
 
 def test_indexing_modes():
     """Test zero vs one indexing"""
@@ -72,16 +110,45 @@ def test_different_types():
     # String list
     result, _ = node.select_from_list(["a", "b", "c"], 1, True)
     assert result == "b", f"String list failed"
+    assert isinstance(result, str), "Should return string"
     
-    # Integer list (converted to strings by String Splitter in practice)
-    result, _ = node.select_from_list(["10", "20", "30"], 0, True)
-    assert result == "10", f"Integer string list failed"
+    # Integer list (actual integers from String Splitter with INT output)
+    result, _ = node.select_from_list([10, 20, 30], 0, True)
+    assert result == 10, f"Integer list failed"
+    assert isinstance(result, int), "Should return integer"
     
-    # Mixed list (as strings)
-    result, _ = node.select_from_list(["text", "42", "true"], 1, True)
-    assert result == "42", f"Mixed list failed"
+    # Float list
+    result, _ = node.select_from_list([1.5, 2.0, 3.14], 2, True)
+    assert result == 3.14, f"Float list failed"
+    assert isinstance(result, float), "Should return float"
+    
+    # Mixed list
+    result, _ = node.select_from_list(["text", 42, 3.14], 1, True)
+    assert result == 42, f"Mixed list failed"
+    assert isinstance(result, int), "Should preserve int type"
     
     print("✓ test_different_types passed")
+
+def test_return_types():
+    """Validate return types are preserved"""
+    node = ListIndexSelector()
+    
+    # String input
+    result = node.select_from_list(["a", "b"], 0, True)
+    assert isinstance(result, tuple), f"Should return tuple"
+    assert len(result) == 2, f"Should return 2 items"
+    assert isinstance(result[0], str), f"First item should be string"
+    assert isinstance(result[1], int), f"Second item should be int"
+    
+    # Integer input
+    result = node.select_from_list([10, 20], 0, True)
+    assert isinstance(result[0], int), f"First item should be int when input is int"
+    
+    # Float input
+    result = node.select_from_list([1.5, 2.5], 0, True)
+    assert isinstance(result[0], float), f"First item should be float when input is float"
+    
+    print("✓ test_return_types passed")
 
 
 def test_out_of_range():
@@ -92,12 +159,18 @@ def test_out_of_range():
     
     # Index too high
     result, length = node.select_from_list(test_list, 10, True)
-    assert result == "", f"Out of range should return empty string, got {result}"
+    assert result is None, f"Out of range should return None, got {result}"
     assert length == 3, f"Should still return correct length"
     
     # Negative with zero-indexing
     result, _ = node.select_from_list(test_list, -1, True)
-    assert result == "", f"Negative index should return empty string"
+    assert result is None, f"Negative index should return None"
+    
+    # Works with integer lists too
+    int_list = [10, 20, 30]
+    result, length = node.select_from_list(int_list, 99, True)
+    assert result is None, f"Out of range on int list should return None"
+    assert length == 3
     
     print("✓ test_out_of_range passed")
 
@@ -108,7 +181,7 @@ def test_edge_cases():
     
     # Empty list
     result, length = node.select_from_list([], 0, True)
-    assert result == "", f"Empty list should return empty string"
+    assert result is None, f"Empty list should return None, got {result}"
     assert length == 0
     
     # Single item list
@@ -133,6 +206,26 @@ def test_return_types():
     
     print("✓ test_return_types passed")
 
+def test_return_types():
+    """Validate return types are preserved"""
+    node = ListIndexSelector()
+    
+    # String input
+    result = node.select_from_list(["a", "b"], 0, True)
+    assert isinstance(result, tuple), f"Should return tuple"
+    assert len(result) == 2, f"Should return 2 items"
+    assert isinstance(result[0], str), f"First item should be string"
+    assert isinstance(result[1], int), f"Second item should be int"
+    
+    # Integer input
+    result = node.select_from_list([10, 20], 0, True)
+    assert isinstance(result[0], int), f"First item should be int when input is int"
+    
+    # Float input
+    result = node.select_from_list([1.5, 2.5], 0, True)
+    assert isinstance(result[0], float), f"First item should be float when input is float"
+    
+    print("✓ test_return_types passed")
 
 def test_input_types_structure():
     """Validate INPUT_TYPES matches function signature"""
@@ -164,11 +257,13 @@ def run_all_tests():
     try:
         test_basic_selection()
         test_with_string_splitter_output()
+        test_with_int_splitter_output()        # NEW
+        test_with_float_splitter_output()      # NEW
         test_indexing_modes()
-        test_different_types()
-        test_out_of_range()
+        test_different_types()                 # UPDATED
+        test_out_of_range()                    # UPDATED
         test_edge_cases()
-        test_return_types()
+        test_return_types()                    # UPDATED
         test_input_types_structure()
         
         print("\n" + "="*50)

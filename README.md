@@ -1,30 +1,23 @@
 # ComfyUI-JK-TextTools
 
-Text and data manipulation nodes for ComfyUI.
+Text and data manipulation nodes for ComfyUI, with emphasis on JSON processing, detection workflows, and bbox visualization.
 
 ## Features
 
-### String Index Selector
-Extract a single element from a delimited string by index.
-
-**Use case:** In a loop, get the Nth item from a comma-separated list.
-
-**Example:**
-- Input: `"10,25,42,100"`, index: `2`
-- Output: `"42"`
-
-Perfect for extracting frame numbers, filenames, or any list item during iteration.
-
-### String Splitter
-*(Coming soon)* Split delimited strings into multiple outputs or a list.
+- **Text Manipulation:** Split, join, and index delimited strings with type casting
+- **JSON Processing:** Format and query JSON data with wildcard filtering
+- **Detection Workflows:** Extract and visualize bounding boxes from detection results
+- **Mask Generation:** Convert bboxes to masks for image processing
 
 ## Installation
 
-### Method 1: ComfyUI Manager (Recommended when published)
-Search for "JK-TextTools" in ComfyUI Manager
+### Via ComfyUI Manager (Recommended)
+*(When published)*
+1. Open ComfyUI Manager
+2. Search for "JK-TextTools"
+3. Click Install
 
-### Method 2: Manual Installation
-
+### Manual Installation
 1. Navigate to your ComfyUI custom_nodes directory:
    ```bash
    cd ComfyUI/custom_nodes
@@ -39,58 +32,287 @@ Search for "JK-TextTools" in ComfyUI Manager
 
 ## Nodes
 
-### String Index Selector
+### Text Manipulation
 
-**Category:** `text/string_ops`
+#### String Index Selector
+Extract a single element from a delimited string by index - perfect for loop workflows.
 
 **Inputs:**
 - `text` (STRING): The delimited string to split
 - `delimiter` (STRING): Character(s) to split on (default: `,`)
 - `index` (INT): Which item to extract (0-based by default)
-- `strip_whitespace` (BOOLEAN): Remove leading/trailing spaces (default: `True`)
-- `zero_indexed` (BOOLEAN, optional): Use 0-based indexing (default: `True`)
+- `output_type` (STRING/INT/FLOAT): Type to cast result to
+- `strip_whitespace` (BOOLEAN): Remove leading/trailing spaces
+- `zero_indexed` (BOOLEAN, optional): Use 0-based indexing
 
 **Outputs:**
-- `selected_item` (STRING): The extracted item
-- `item_count` (INT): Total number of items in the list
+- `selected_item`: The extracted item (typed)
+- `item_count` (INT): Total number of items
+
+**Example:**
+```
+Input: "10,25,42,100", delimiter: ",", index: 2, output_type: INT
+Output: 42 (as integer)
+```
+
+#### String Splitter
+Split a delimited string into a typed list with optional casting.
+
+**Inputs:**
+- `text` (STRING): The delimited string
+- `delimiter` (STRING): What to split on
+- `output_type` (STRING/INT/FLOAT): Type to cast items to
+- `strip_whitespace` (BOOLEAN): Clean up items
+- `remove_empty` (BOOLEAN, optional): Remove empty strings
+
+**Outputs:**
+- `string_list` (LIST): List of typed items
+- `item_count` (INT): Number of items
 
 **Features:**
-- Handles out-of-range indices gracefully (returns empty string)
-- Option for 0-based or 1-based indexing
-- Returns total count for validation
+- Type casting to STRING, INT, or FLOAT
+- Escape sequence support (`\n`, `\t`, `\r`)
+- Empty string handling
+- Grid icon displays correctly (OUTPUT_IS_LIST working)
 
-## Use Cases
+#### List Index Selector
+Extract an item from a list by index with type preservation.
 
-### Loop Over Frame Numbers
+**Inputs:**
+- `list_input` (*): Any list (connect from String Splitter)
+- `index` (INT): Which item to extract
+- `zero_indexed` (BOOLEAN): 0-based or 1-based indexing
+
+**Outputs:**
+- `selected_item`: The selected item (type-preserving)
+- `list_length` (INT): Total list size
+
+#### String Joiner
+Join list items into a delimited string.
+
+**Inputs:**
+- `list_input` (*): Any list
+- `delimiter` (STRING): String to insert between items (supports escape sequences)
+
+**Outputs:**
+- `joined_string` (STRING): The combined string
+- `item_count` (INT): Number of items joined
+
+**Escape Sequences:** Supports `\n`, `\t`, `\r`, `\\`
+
+### JSON Processing
+
+#### JSON Pretty Printer
+Format JSON strings with proper indentation for readability.
+
+**Inputs:**
+- `json_string` (STRING): Raw JSON to format
+- `indent` (INT): Number of spaces for indentation (0-8)
+- `sort_keys` (BOOLEAN, optional): Alphabetically sort object keys
+
+**Outputs:**
+- `formatted_json` (STRING): Pretty-printed JSON
+- `is_valid` (BOOLEAN): Whether JSON is valid
+- `error_message` (STRING): Error details if invalid
+
+**Example:**
 ```
-VHS "Select Images" Node → "10,25,42,100"
+Input: [{"detect_result":[{"class":"DOG","score":0.9}]}]
+Output: (formatted with indentation and newlines)
+```
+
+#### Detection Query
+Query detection results with class filtering, score thresholds, and wildcards.
+
+**Inputs:**
+- `json_string` (STRING): JSON containing detection results
+- `class_filter` (STRING): Class name with wildcards (default: `*`)
+- `min_score` (FLOAT, optional): Minimum confidence score
+- `max_results` (INT, optional): Maximum results to return
+- `categorization_field` (STRING, optional): Field name to extract
+
+**Outputs:**
+- `filtered_json` (STRING): Filtered results as JSON
+- `match_count` (INT): Number of matches
+- `detection_list` (LIST): Individual detections for iteration
+- `bbox_list` (LIST): List of bboxes for visualization
+- `categorization_value` (*): Extracted field value
+- `is_valid` (BOOLEAN): Whether JSON is valid
+- `error_message` (STRING): Error details if invalid
+
+**Wildcard Examples:**
+- `CLASS1_LABEL` → Exact match
+- `CLASS1_*` → All CLASS1 subclasses
+- `*_LABEL` → All ending with _LABEL
+- `*` → All detections
+
+**Use Case:** Filter detections, extract bboxes for visualization
+
+### BBox and Mask Operations
+
+#### Detection to BBox
+Extract bounding box from a detection object.
+
+**Inputs:**
+- `detection` (STRING): JSON string of detection object
+- `bbox_key` (box/bbox): Which key contains the bbox
+
+**Outputs:**
+- `bbox` (BBOX): Bounding box in format `[[x, y, width, height]]`
+- `x`, `y`, `width`, `height` (INT): Individual components
+- `class_name` (STRING): Detection class
+- `score` (FLOAT): Confidence score
+
+**Format:** Works with detection objects containing `"box": [x, y, w, h]` or `"bbox": [x, y, w, h]`
+
+#### BBoxes to Mask
+Convert a list of bounding boxes to binary masks.
+
+**Inputs:**
+- `bboxes` (*): List of bboxes from Detection Query
+- `width` (INT): Image width
+- `height` (INT): Image height
+- `invert` (BOOLEAN, optional): Invert mask (bbox black, rest white)
+
+**Outputs:**
+- `combined_mask` (MASK): Union of all bboxes in one mask
+- `individual_masks` (LIST of MASK): One mask per bbox
+- `bbox_count` (INT): Number of bboxes processed
+
+**Format:** Accepts `[[[x,y,w,h]], [[x,y,w,h]], ...]` from Detection Query's bbox_list output
+
+## Workflow Examples
+
+### Example 1: Frame Number Extraction (Original Use Case)
+```
+VHS Node → "10,25,42,100"
     ↓
-Easy Use For Loop Nodes → iteration index
+String Index Selector
+  - delimiter: ","
+  - index: 2 (from loop)
+  - output_type: INT
     ↓
-String Index Selector → "42"
+Output: 42 (as integer)
     ↓
 Save Image: "frame_42.png"
+```
+
+### Example 2: Detection Visualization
+```
+Detection JSON
+    ↓
+JSON Pretty Printer (format for readability)
+    ↓
+Detection Query
+  - class_filter: "DOG_*"
+  - min_score: 0.7
+    ↓
+bbox_list output
+    ↓
+BBoxes to Mask
+  - width: 512
+  - height: 512
+    ↓
+combined_mask → Apply to original image
+```
+
+### Example 3: Typed List Processing
+```
+"10,25,42,100"
+    ↓
+String Splitter
+  - output_type: INT
+    ↓
+[10, 25, 42, 100] (actual integers)
+    ↓
+List Index Selector
+  - index: 2
+    ↓
+Output: 42 (as int, not string)
+    ↓
+Can connect directly to nodes expecting INT
+```
+
+### Example 4: Multi-line Text Processing
+```
+Multiline Text Input
+    ↓
+String Splitter
+  - delimiter: \n
+    ↓
+List of lines
+    ↓
+String Joiner
+  - delimiter: ", "
+    ↓
+Comma-separated output
 ```
 
 ## Development
 
 ### Running Tests
 ```bash
-python test_string_index_selector.py
+# Individual tests
+python tests/test_string_splitter.py
+
+# All tests at once
+python tests/run_all_tests.py
 ```
 
 ### Requirements
 - Python 3.10+
 - ComfyUI
+- PyTorch (for mask generation)
+
+See `requirements.txt` for development dependencies.
+
+## Technical Notes
+
+### BBox Format
+Standard format used throughout: `[[x, y, width, height]]`
+- Single bbox: `[[100, 200, 50, 75]]`
+- Multiple bboxes: `[[[x1,y1,w1,h1]], [[x2,y2,w2,h2]], ...]`
+- Coordinates are XYWH (top-left corner + dimensions)
+
+### OUTPUT_IS_LIST
+Nodes using OUTPUT_IS_LIST show grid icon in ComfyUI and output items for iteration:
+- String Splitter: `string_list`
+- List Index Selector: receives lists
+- Detection Query: `detection_list`, `bbox_list`
+- BBoxes to Mask: `individual_masks`
+
+### Type Preservation
+List Index Selector preserves input types:
+- String list → Returns strings
+- Int list → Returns ints
+- Float list → Returns floats
+
+## Compatibility
+
+### Cross-Package Support
+- **Works with:** ImpactPack (with type converter if needed)
+- **Works with:** KJNodes BBox Visualizer
+- **Works with:** Standard ComfyUI mask nodes
 
 ## Roadmap
 
-- [x] String Index Selector
-- [x] String Splitter (delimited string to list of string, int, or float, supports \n and \t as delimiters)
-- [x] String Joiner (supports \n and \t as delimiters)
-- [ ] JSON Parser
-- [ ] JSON Builder
-- [ ] CSV Parser
+### Current Features ✅
+- [x] Text splitting and joining with type casting
+- [x] List indexing with type preservation
+- [x] JSON formatting and validation
+- [x] Detection querying with wildcards
+- [x] BBox extraction from detections
+- [x] Mask generation from bboxes
+- [x] Escape sequence support
+- [x] Comprehensive test suite
+
+### Future Enhancements
+- [ ] CSV Parser node
+- [ ] JSONPath query support
+- [ ] Regular expression nodes
+- [ ] Additional bbox formats (XYXY, center-based)
+- [ ] Mask operations (union, intersection, difference)
+- [ ] String templating/formatting
 
 ## License
 
@@ -103,3 +325,15 @@ John Knox (Nakamura2828)
 ## Contributing
 
 Issues and pull requests welcome!
+
+## Support
+
+If you find these nodes useful, please star the repository on GitHub!
+
+## Changelog
+
+### v1.0.0 (Current)
+- Initial release
+- 10 nodes covering text manipulation, JSON processing, and bbox visualization
+- Complete test suite
+- Full documentation

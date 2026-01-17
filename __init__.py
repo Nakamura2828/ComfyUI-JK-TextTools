@@ -10,6 +10,8 @@ from .string_joiner import StringJoiner
 from .json_pretty_printer import JSONPrettyPrinter
 from .detection_query import DetectionQuery
 from .detection_to_bbox import DetectionToBBox
+from .bbox_to_mask import BBoxToMask
+from .bboxes_to_mask import BBoxesToMask
 
 NODE_CLASS_MAPPINGS = {
     "JK_StringIndexSelector": StringIndexSelector,
@@ -19,6 +21,8 @@ NODE_CLASS_MAPPINGS = {
     "JK_JSONPrettyPrinter": JSONPrettyPrinter,
     "JK_DetectionQuery": DetectionQuery,
     "JK_DetectionToBBox": DetectionToBBox,
+    "JK_BBoxToMask": BBoxToMask,
+    "JK_BBoxesToMask": BBoxesToMask
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -29,6 +33,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "JK_JSONPrettyPrinter": "JSON Pretty Printer",
     "JK_DetectionQuery": "Query Detection JSON Query",
     "JK_DetectionToBBox": "Detection to BBOX",
+    "JK_BBoxToMask": "BBOX to Mask",
+    "JK_BBoxesToMask": "BBOXes to Unified Mask",
 }
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']

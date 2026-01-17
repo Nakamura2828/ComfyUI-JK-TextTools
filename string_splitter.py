@@ -4,6 +4,12 @@ String Splitter Node for ComfyUI
 Splits a delimited string into a list that can be consumed by other nodes.
 """
 
+# wildcard trick is taken from pythongossss's & ImpactPack
+class AnyType(str):
+    def __ne__(self, __value: object) -> bool:
+        return False
+
+any_typ = AnyType("*")
 
 class StringSplitter:
     """
@@ -41,8 +47,9 @@ class StringSplitter:
         }
     
     # Try LIST as the output type
-    RETURN_TYPES = ("LIST", "INT")
-    RETURN_NAMES = ("string_list", "item_count")
+    RETURN_TYPES = (any_typ, "INT")
+    RETURN_NAMES = ("list", "item_count")
+    OUTPUT_IS_LIST = (True,False)
     FUNCTION = "split_string"
     CATEGORY = "JK-TextTools/string"
     

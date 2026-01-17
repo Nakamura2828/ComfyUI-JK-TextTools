@@ -47,15 +47,32 @@ class StringJoiner:
         
         Args:
             list_input: A Python list from OUTPUT_IS_LIST
-            delimiter: String to insert between items
+            delimiter: String to insert between items (supports \n, \t, \\, etc.)
             
         Returns:
             tuple: (joined_string, item_count)
         """
+        
+        # Handle empty string edge case
+        if len(list_input) == 0:
+            return ("", 0)
+        
         # When INPUT_IS_LIST = True, all inputs come as lists
         # Unwrap scalar inputs
         if isinstance(delimiter, list):
             delimiter = delimiter[0] if delimiter else ","
+                     
+        # Process common escape sequences
+        # This allows typing \n in UI to get actual newlines
+        escape_map = {
+            '\\n': '\n',
+            '\\t': '\t',
+            '\\r': '\r',
+            '\\\\': '\\',
+        }
+        
+        for escape_seq, actual_char in escape_map.items():
+            delimiter = delimiter.replace(escape_seq, actual_char)
         
         # Convert all items to strings
         str_items = [str(item) for item in list_input]

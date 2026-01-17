@@ -184,6 +184,18 @@ def test_full_workflow():
     
     print("✓ test_full_workflow passed")
 
+def test_escape_sequences():
+    node = StringJoiner()
+    
+    # Newline
+    result, _ = node.join_list(["a", "b", "c"], "\\n")
+    assert result == "a\nb\nc", "Should convert \\n to newline"
+    
+    # Tab
+    result, _ = node.join_list(["a", "b"], "\\t")
+    assert result == "a\tb", "Should convert \\t to tab"
+
+    print("✓ test_escape_sequences passed")
 
 def run_all_tests():
     """Run all test functions"""
@@ -200,6 +212,7 @@ def run_all_tests():
         test_return_types()
         test_input_types_structure()
         test_full_workflow()
+        test_escape_sequences()
         
         print("\n" + "="*50)
         print("✅ ALL TESTS PASSED!")

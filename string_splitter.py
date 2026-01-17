@@ -71,6 +71,22 @@ class StringSplitter:
         Raises:
             ValueError: If type casting fails for any item
         """
+        # Handle empty string edge case
+        if not text or (strip_whitespace and not text.strip()):
+            return ([], 0)
+        
+        # Process common escape sequences
+        # This allows typing \n in UI to get actual newlines
+        escape_map = {
+            '\\n': '\n',
+            '\\t': '\t',
+            '\\r': '\r',
+            '\\\\': '\\',
+        }
+        
+        for escape_seq, actual_char in escape_map.items():
+            delimiter = delimiter.replace(escape_seq, actual_char)
+                
         # Split the string
         items = text.split(delimiter)
         

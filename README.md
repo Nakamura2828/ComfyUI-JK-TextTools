@@ -86,8 +86,8 @@ python test_string_index_selector.py
 ## Roadmap
 
 - [x] String Index Selector
-- [ ] String Splitter (multiple outputs)
-- [ ] String Joiner
+- [x] String Splitter (delimited string to list of string, int, or float, supports \n and \t as delimiters)
+- [x] String Joiner (supports \n and \t as delimiters)
 - [ ] JSON Parser
 - [ ] JSON Builder
 - [ ] CSV Parser

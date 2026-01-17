@@ -95,23 +95,23 @@ def test_edge_cases():
     
     # Empty string
     result, count = node.split_string("", ",")
-    assert result == [""], f"Empty string should split to list with one empty string"
-    assert count == 1
+    assert result == [], f"Empty string should split to list with one empty string, saw {result}"
+    assert count == 0, f"Empty string should have a count of zero, saw {result}"
     
     # Empty string with remove_empty
     result, count = node.split_string("", ",", remove_empty=True)
-    assert result == [], f"Empty string with remove_empty should be empty list"
-    assert count == 0
+    assert result == [], f"Empty string with remove_empty should be empty list, saw {result}"
+    assert count == 0, f"Empty string should have a count of zero, saw {result}"
     
     # Single item
     result, count = node.split_string("only", ",")
     assert result == ["only"], f"Single item failed"
-    assert count == 1
+    assert count == 1, f"Single item string should have a count of one, saw {result}"
     
     # No delimiters
     result, count = node.split_string("no-delimiters", ",")
     assert result == ["no-delimiters"], f"No delimiters should return single item"
-    assert count == 1
+    assert count == 1, f"List with no delimiters count of one, saw {result}"
     
     print("✓ test_edge_cases passed")
 
@@ -257,6 +257,13 @@ def test_whitespace_with_casting():
     
     print("✓ test_whitespace_with_casting passed")
 
+def test_empty_string():
+    node = StringSplitter()
+    result, count = node.split_string("", ",")
+    assert result == [], "Empty string should return empty list"
+    assert count == 0
+
+    print("✓ test_empty_string passed")
 
 def run_all_tests():
     """Run all test functions"""
@@ -279,6 +286,8 @@ def run_all_tests():
         test_invalid_float_casting()
         test_empty_string_with_casting()
         test_whitespace_with_casting()
+
+        test_empty_string()
         
         print("\n" + "="*50)
         print("✅ ALL TESTS PASSED!")

@@ -441,6 +441,31 @@ def test_return_types():
     print("✓ test_return_types passed")
 
 
+def test_numpy_array_confidence():
+    """Test handling of numpy array confidence values (ImpactPack format)"""
+    node = SEGsToMask()
+
+    # Create SEG with numpy array confidence (like ImpactPack)
+    mask = np.ones((50, 50), dtype=np.float32)
+    seg_data = [
+        (mask, [10, 10, 60, 60], "person", np.array([0.9457324], dtype=np.float32)),
+        (mask, [100, 100, 150, 150], "dog", np.array([0.8123456], dtype=np.float32))
+    ]
+
+    segs = create_mock_segs(256, 256, seg_data)
+
+    combined_mask, individual_masks, labels_info, count = node.segs_to_mask(segs)
+
+    assert count == 2, f"Should have 2 masks, got {count}"
+    assert len(labels_info) == 2, "Should have 2 labels"
+
+    # Check that confidence values are properly formatted as floats
+    assert "person: 0.95" in labels_info[0], f"Expected 'person: 0.95', got '{labels_info[0]}'"
+    assert "dog: 0.81" in labels_info[1], f"Expected 'dog: 0.81', got '{labels_info[1]}'"
+
+    print("✓ test_numpy_array_confidence passed")
+
+
 def run_all_tests():
     """Run all test functions"""
     print("Running tests for SEGsToMask...\n")
@@ -462,6 +487,7 @@ def run_all_tests():
         test_combined_mask_union()
         test_input_types_structure()
         test_return_types()
+        test_numpy_array_confidence()
 
         print("\n" + "="*50)
         print("✅ ALL TESTS PASSED!")

@@ -139,6 +139,12 @@ class SEGsToMask:
                     crop_region = getattr(seg, 'crop_region', None)
                     seg_label = getattr(seg, 'label', '')
                     confidence = getattr(seg, 'confidence', 1.0)
+
+                    # Handle confidence as numpy array (ImpactPack) or float (TBG SAM3)
+                    if isinstance(confidence, np.ndarray):
+                        confidence = float(confidence.item())
+                    elif not isinstance(confidence, (int, float)):
+                        confidence = float(confidence)
                 except Exception:
                     # If SEG is not an object, skip it
                     continue

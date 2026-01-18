@@ -1,7 +1,7 @@
 """
 SEGs to SAM3 Query Node for ComfyUI
 
-Converts SEGS segmentation to TBG SAM3 Selector query formats.
+Converts SEGS segmentation to both SAM3 and TBG SAM3 Selector query formats.
 Generates box query (bounding box) and point query (mask centroid).
 """
 
@@ -12,15 +12,21 @@ import numpy as np
 
 class SEGsToSAM3Query:
     """
-    Convert SEGS segmentation to SAM3 Selector query formats.
+    Convert SEGS segmentation to SAM3 query formats.
 
     Takes SEGS and generates:
-    - Box query (XYXY format): Bounding box of entire segmentation
-    - Point query: Centroid of mask (center of mass)
+    - SAM3 format: Normalized coordinates with label arrays
+    - TBG SAM3 Selector format: Absolute coordinates
 
     SEGS format: ((height, width), [SEG(...), SEG(...), ...])
-    Box query: [{"x1": float, "y1": float, "x2": float, "y2": float}]
-    Point query: [{"x": float, "y": float}]
+
+    SAM3 format outputs:
+    - box_prompt: {"boxes": [[x_norm, y_norm, w_norm, h_norm]], "labels": [True/False]}
+    - point_prompt: {"points": [[x_norm, y_norm]], "labels": [1/0]}
+
+    TBG format outputs:
+    - box_query_tbg: [{"x1": float, "y1": float, "x2": float, "y2": float}]
+    - point_query_tbg: [{"x": float, "y": float}]
     """
 
     @classmethod
@@ -29,27 +35,37 @@ class SEGsToSAM3Query:
             "required": {
                 "segs": ("SEGS", {}),
             },
+            "optional": {
+                "prompt_type": (["positive", "negative"], {"default": "positive"}),
+            },
         }
 
-    RETURN_TYPES = ("STRING", "STRING")
-    RETURN_NAMES = ("box_query", "point_query")
+    RETURN_TYPES = ("SAM3_BOXES_PROMPT", "SAM3_POINTS_PROMPT", "STRING", "STRING")
+    RETURN_NAMES = ("box_sam3", "point_sam3", "box_tbg_sam3", "point_tbg_sam3")
     FUNCTION = "segs_to_sam3_query"
     CATEGORY = "JK-TextTools/segs"
 
-    def segs_to_sam3_query(self, segs):
+    def segs_to_sam3_query(self, segs, prompt_type="positive"):
         """
         Convert SEGS to SAM3 query formats.
 
         Args:
             segs: SEGS tuple ((height, width), [SEG(...), ...])
+            prompt_type: "positive" or "negative" (for SAM3 labels)
 
         Returns:
-            tuple: (box_query_string, point_query_string)
+            tuple: (box_prompt_dict, point_prompt_dict, box_query_tbg_string, point_query_tbg_string)
         """
+        # Unwrap prompt_type if it comes as a list (from optional param)
+        if isinstance(prompt_type, list):
+            prompt_type = prompt_type[0]
+
         # Validate SEGS format
         if not isinstance(segs, tuple) or len(segs) != 2:
             # Invalid SEGS format - return empty queries
-            return ("[]", "[]")
+            empty_box_prompt = {"boxes": [], "labels": []}
+            empty_point_prompt = {"points": [], "labels": []}
+            return (empty_box_prompt, empty_point_prompt, "[]", "[]")
 
         dims, seg_list = segs
 
@@ -58,12 +74,16 @@ class SEGsToSAM3Query:
             height, width = dims
         else:
             # Invalid dimensions - return empty
-            return ("[]", "[]")
+            empty_box_prompt = {"boxes": [], "labels": []}
+            empty_point_prompt = {"points": [], "labels": []}
+            return (empty_box_prompt, empty_point_prompt, "[]", "[]")
 
         # Validate seg_list
         if not isinstance(seg_list, list) or len(seg_list) == 0:
             # Empty seg list - return empty queries
-            return ("[]", "[]")
+            empty_box_prompt = {"boxes": [], "labels": []}
+            empty_point_prompt = {"points": [], "labels": []}
+            return (empty_box_prompt, empty_point_prompt, "[]", "[]")
 
         # Reconstruct full mask by unioning all segments
         full_mask = torch.zeros((height, width), dtype=torch.float32)
@@ -134,14 +154,18 @@ class SEGsToSAM3Query:
 
         # If no valid masks found, return empty queries
         if not has_valid_mask:
-            return ("[]", "[]")
+            empty_box_prompt = {"boxes": [], "labels": []}
+            empty_point_prompt = {"points": [], "labels": []}
+            return (empty_box_prompt, empty_point_prompt, "[]", "[]")
 
         # Find all non-zero pixels (use threshold for floating point masks)
         mask_pixels = full_mask > 0.5
 
         # Check if mask is empty
         if not mask_pixels.any():
-            return ("[]", "[]")
+            empty_box_prompt = {"boxes": [], "labels": []}
+            empty_point_prompt = {"points": [], "labels": []}
+            return (empty_box_prompt, empty_point_prompt, "[]", "[]")
 
         # Get coordinates of all mask pixels
         y_coords, x_coords = torch.where(mask_pixels)
@@ -157,14 +181,49 @@ class SEGsToSAM3Query:
         centroid_x = float(x_coords.float().mean().item())
         centroid_y = float(y_coords.float().mean().item())
 
-        # Create box query (XYXY format)
-        box_query = [{"x1": x_min, "y1": y_min, "x2": x_max, "y2": y_max}]
+        # === SAM3 Format Outputs (normalized coordinates) ===
+        # Normalize coordinates to 0-1 range
+        x_min_norm = x_min / width
+        y_min_norm = y_min / height
+        x_max_norm = x_max / width
+        y_max_norm = y_max / height
 
-        # Create point query (centroid)
-        point_query = [{"x": centroid_x, "y": centroid_y}]
+        # Calculate width and height (normalized)
+        w_norm = x_max_norm - x_min_norm
+        h_norm = y_max_norm - y_min_norm
 
-        # Convert to JSON strings
-        box_query_str = json.dumps(box_query)
-        point_query_str = json.dumps(point_query)
+        # Normalize centroid
+        centroid_x_norm = centroid_x / width
+        centroid_y_norm = centroid_y / height
 
-        return (box_query_str, point_query_str)
+        # Determine labels based on prompt type
+        if prompt_type == "positive":
+            box_label = True
+            point_label = 1
+        else:  # negative
+            box_label = False
+            point_label = 0
+
+        # Create SAM3 format prompts (XYWH normalized)
+        box_prompt = {
+            "boxes": [[x_min_norm, y_min_norm, w_norm, h_norm]],
+            "labels": [box_label]
+        }
+
+        point_prompt = {
+            "points": [[centroid_x_norm, centroid_y_norm]],
+            "labels": [point_label]
+        }
+
+        # === TBG SAM3 Selector Format Outputs (absolute coordinates) ===
+        # Create TBG box query (XYXY format)
+        box_query_tbg = [{"x1": x_min, "y1": y_min, "x2": x_max, "y2": y_max}]
+
+        # Create TBG point query (centroid)
+        point_query_tbg = [{"x": centroid_x, "y": centroid_y}]
+
+        # Convert TBG outputs to JSON strings
+        box_query_tbg_str = json.dumps(box_query_tbg)
+        point_query_tbg_str = json.dumps(point_query_tbg)
+
+        return (box_prompt, point_prompt, box_query_tbg_str, point_query_tbg_str)

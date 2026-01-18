@@ -7,7 +7,8 @@ Text and data manipulation nodes for ComfyUI, with emphasis on JSON processing, 
 - **Text Manipulation:** Split, join, and index delimited strings with type casting
 - **JSON Processing:** Format and query JSON data with wildcard filtering
 - **Detection Workflows:** Extract and visualize bounding boxes from detection results
-- **Mask Generation:** Convert bboxes to masks for image processing
+- **Mask Generation:** Convert bboxes and segmentations to masks for image processing
+- **Segmentation Support:** Process SEGS format from SAM3 with filtering and union capabilities
 
 ## Installation
 
@@ -230,6 +231,75 @@ Convert a list of bounding boxes to binary masks with union functionality.
 
 **Format:** Accepts `[[[x,y,w,h]], [[x,y,w,h]], ...]` from Detection Query's bbox_list output or JSON to BBox
 
+#### SEGs to Mask
+Convert SEGS (segmentation results) to binary masks with filtering and union capabilities.
+
+**Inputs:**
+- `segs` (SEGS): Segmentation results from TBG SAM3 Segmentation or similar nodes
+- `label_filter` (STRING, optional): Wildcard pattern for label filtering (default: `*`)
+- `min_confidence` (FLOAT, optional): Minimum confidence threshold (0.0-1.0, default: 0.0)
+- `min_area_percent` (FLOAT, optional): Minimum mask area as percentage of image (0.0-100.0, default: 0.0)
+- `sort_order` (default/x_then_y/y_then_x, optional): Order segments deterministically
+- `union_same_labels` (BOOLEAN, optional): Combine segments with same label (default: True)
+- `invert` (BOOLEAN, optional): Invert mask (mask areas black, rest white)
+
+**Outputs:**
+- `combined_mask` (MASK): Union of all filtered segments
+- `individual_masks` (LIST of MASK): One mask per label (when union enabled) or per segment
+- `labels_info` (LIST of STRING): Label and confidence info (e.g., "person_0: 0.95")
+- `seg_count` (INT): Number of masks returned
+
+**SEGS Format:**
+```python
+((height, width), [SEG(...), SEG(...), ...])
+```
+
+Each SEG object contains:
+- `cropped_mask`: numpy array with mask data
+- `crop_region`: [x1, y1, x2, y2] placement coordinates
+- `label`: string label (e.g., "person_0")
+- `confidence`: float confidence score
+
+**Features:**
+- **Label Filtering:** Use wildcards to filter by label (`person_*`, `*_LABEL`, etc.)
+- **Confidence Filtering:** Remove low-confidence segments
+- **Area Filtering:** Remove tiny masks below percentage threshold (e.g., 5.0 for 5% of image)
+- **Union Same Labels:** Combines all segments with same label into one mask (default)
+  - Uses max confidence score for combined segments
+  - Example: 3x "person_0" segments → 1 "person_0" mask
+- **Deterministic Sorting:** Order segments by position (x_then_y or y_then_x)
+- **Robust Handling:** Gracefully handles None cropped_masks and invalid data
+
+**Wildcard Examples:**
+- `*` → All segments (default)
+- `person_*` → All person detections
+- `*_0` → All first instances of each class
+- `dog` → Exact match only
+
+**Sort Order Options:**
+- `default` → Keep original order from SEGS
+- `x_then_y` → Left-to-right, then top-to-bottom
+- `y_then_x` → Top-to-bottom, then left-to-right
+
+**Use Case:** Convert SAM3 segmentation results to masks for image processing workflows
+
+**Example Workflow:**
+```
+TBG SAM3 Segmentation
+    ↓
+segs output → ((512, 512), [SEG(...), SEG(...), ...])
+    ↓
+SEGs to Mask
+  - label_filter: "person_*"
+  - min_confidence: 0.7
+  - min_area_percent: 5.0
+  - union_same_labels: True
+    ↓
+combined_mask → Mask of all detected persons
+individual_masks → One mask per unique person
+labels_info → ["person_0: 0.95", "person_1: 0.87"]
+```
+
 ## Workflow Examples
 
 ### Example 1: Frame Number Extraction (Original Use Case)
@@ -366,11 +436,12 @@ List Index Selector preserves input types:
 ### Cross-Package Support
 - **Works with:** ImpactPack (with type converter if needed)
 - **Works with:** KJNodes BBox Visualizer
-- **Works with:** TBG SAM3 Segmentation (via JSON to BBox node)
+- **Works with:** TBG SAM3 Segmentation (via JSON to BBox node for bboxes, SEGs to Mask for segmentations)
 - **Works with:** Standard ComfyUI mask nodes
 
 **Verified Workflows:**
 - TBG SAM3 → JSON to BBox → BBoxes to Mask ✅
+- TBG SAM3 → SEGs to Mask (full SEGS support) ✅
 
 ## Roadmap
 
@@ -382,6 +453,7 @@ List Index Selector preserves input types:
 - [x] BBox extraction from detection objects
 - [x] JSON bbox array conversion with XYXY/XYWH support
 - [x] Mask generation from bboxes (union and individual)
+- [x] SEGS segmentation to mask conversion with filtering and union
 - [x] Escape sequence support
 - [x] Comprehensive test suite (95%+ coverage)
 
@@ -411,6 +483,19 @@ If you find these nodes useful, please star the repository on GitHub!
 
 ## Changelog
 
+### v1.1.0 (2026-01-17)
+- **NEW: SEGs to Mask Node** - Convert SEGS segmentation format to masks
+  - Full support for TBG SAM3 Segmentation node output
+  - Wildcard label filtering (fnmatch patterns)
+  - Confidence threshold filtering (min_confidence)
+  - Area percentage filtering (min_area_percent) to remove tiny masks
+  - Deterministic sorting options (default/x_then_y/y_then_x)
+  - Union same labels feature (combines segments with same label, uses max confidence)
+  - Invert mode support
+  - 4 outputs: combined_mask, individual_masks (list), labels_info (list), seg_count
+  - Comprehensive tests: 16 test cases covering all features
+  - Robust handling of None masks and invalid data
+
 ### v1.0.1 (2026-01-17)
 - **BBox to Mask Refactored:** Simplified to single bbox → single mask converter
   - Removed combined_mask output (use BBoxes to Mask for union functionality)
@@ -421,7 +506,7 @@ If you find these nodes useful, please star the repository on GitHub!
   - No longer marked EXPERIMENTAL - clean, focused implementation
 
 ### v1.0.0 (2026-01-17)
-- Initial release with 10 working nodes
+- Initial release with 10 working nodes (now 11 with SEGs to Mask in v1.1.0)
 - **Text Manipulation (4 nodes):**
   - String Index Selector, String Splitter, List Index Selector, String Joiner
   - Full type casting support (STRING/INT/FLOAT)

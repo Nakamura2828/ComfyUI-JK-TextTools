@@ -13,6 +13,7 @@ from .detection_to_bbox import DetectionToBBox
 from .bbox_to_mask import BBoxToMask
 from .bboxes_to_mask import BBoxesToMask
 from .json_to_bbox import JSONToBBox
+from .segs_to_mask import SEGsToMask
 
 NODE_CLASS_MAPPINGS = {
     "JK_StringIndexSelector": StringIndexSelector,
@@ -25,6 +26,7 @@ NODE_CLASS_MAPPINGS = {
     "JK_BBoxToMask": BBoxToMask,
     "JK_BBoxesToMask": BBoxesToMask,
     "JK_JSONToBBox": JSONToBBox,
+    "JK_SEGsToMask": SEGsToMask,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -37,7 +39,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "JK_DetectionToBBox": "Detection to BBOX",
     "JK_BBoxToMask": "BBOX to Mask",
     "JK_BBoxesToMask": "BBOXes to Unified Mask",
-    "JK_JSONToBBox": "JSON to BBOX"
+    "JK_JSONToBBox": "JSON to BBOX",
+    "JK_SEGsToMask": "SEGs to Mask"
 }
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']

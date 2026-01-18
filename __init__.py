@@ -14,6 +14,8 @@ from .bbox_to_mask import BBoxToMask
 from .bboxes_to_mask import BBoxesToMask
 from .json_to_bbox import JSONToBBox
 from .segs_to_mask import SEGsToMask
+from .bbox_to_sam3_query import BBoxToSAM3Query
+from .segs_to_sam3_query import SEGsToSAM3Query
 
 NODE_CLASS_MAPPINGS = {
     "JK_StringIndexSelector": StringIndexSelector,
@@ -27,6 +29,8 @@ NODE_CLASS_MAPPINGS = {
     "JK_BBoxesToMask": BBoxesToMask,
     "JK_JSONToBBox": JSONToBBox,
     "JK_SEGsToMask": SEGsToMask,
+    "JK_BBoxToSAM3Query": BBoxToSAM3Query,
+    "JK_SEGsToSAM3Query": SEGsToSAM3Query
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -40,7 +44,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "JK_BBoxToMask": "BBOX to Mask",
     "JK_BBoxesToMask": "BBOXes to Unified Mask",
     "JK_JSONToBBox": "JSON to BBOX",
-    "JK_SEGsToMask": "SEGs to Mask"
+    "JK_SEGsToMask": "SEGs to Mask",
+    "JK_BBoxToSAM3Query": "BBox to SAM3 Query",
+    "JK_SEGsToSAM3Query": "SEGS to SAM3 Query"
 }
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']

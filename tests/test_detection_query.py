@@ -358,6 +358,178 @@ def test_categorization_with_different_types():
     print("✓ test_categorization_with_different_types passed")
 
 
+def test_bbox_list_output():
+    """Test bbox_list output (4th return value)"""
+    node = DetectionQuery()
+
+    input_json = json.dumps(SAMPLE_DETECTIONS)
+
+    # Get all detections
+    filtered_json, count, detection_list, bbox_list, _, is_valid, error = node.query_detections(
+        input_json,
+        class_filter="*"
+    )
+
+    assert is_valid == True, "Should be valid"
+    assert isinstance(bbox_list, list), "bbox_list should be a list"
+    assert len(bbox_list) == 6, f"Should have 6 bboxes, got {len(bbox_list)}"
+
+    # Check first bbox structure (from CLASS1_LABEL)
+    # box: [246, 149, 174, 207] -> should be wrapped as [[246, 149, 174, 207]]
+    first_bbox = bbox_list[0]
+    assert isinstance(first_bbox, list), "Each bbox should be wrapped in a list"
+    assert len(first_bbox) == 1, "Each bbox should have one element"
+    assert first_bbox[0] == [246, 149, 174, 207], f"First bbox should match, got {first_bbox[0]}"
+
+    print("✓ test_bbox_list_output passed")
+
+
+def test_bbox_list_with_filtering():
+    """Test bbox_list only returns bboxes from filtered detections"""
+    node = DetectionQuery()
+
+    input_json = json.dumps(SAMPLE_DETECTIONS)
+
+    # Filter to only CLASS1_* detections
+    filtered_json, count, detection_list, bbox_list, _, is_valid, error = node.query_detections(
+        input_json,
+        class_filter="CLASS1_*"
+    )
+
+    assert count == 3, "Should filter to 3 CLASS1_* detections"
+    assert len(bbox_list) == 3, f"bbox_list should have 3 items, got {len(bbox_list)}"
+
+    # Verify bbox_list matches detection_list
+    for i, detection in enumerate(detection_list):
+        expected_bbox = detection.get("box") or detection.get("bbox")
+        actual_bbox = bbox_list[i][0]  # Unwrap from [[...]]
+        assert actual_bbox == expected_bbox, \
+            f"bbox_list[{i}] should match detection_list[{i}] bbox"
+
+    print("✓ test_bbox_list_with_filtering passed")
+
+
+def test_bbox_list_with_score_filter():
+    """Test bbox_list respects score filtering"""
+    node = DetectionQuery()
+
+    input_json = json.dumps(SAMPLE_DETECTIONS)
+
+    # Only high confidence detections
+    filtered_json, count, detection_list, bbox_list, _, is_valid, error = node.query_detections(
+        input_json,
+        class_filter="*",
+        min_score=0.7
+    )
+
+    assert count == 3, "Should have 3 high-confidence detections"
+    assert len(bbox_list) == 3, "bbox_list should match count"
+
+    # First should be CLASS1_LABEL with box [246, 149, 174, 207]
+    assert bbox_list[0][0] == [246, 149, 174, 207]
+
+    print("✓ test_bbox_list_with_score_filter passed")
+
+
+def test_bbox_list_with_max_results():
+    """Test bbox_list respects max_results limit"""
+    node = DetectionQuery()
+
+    input_json = json.dumps(SAMPLE_DETECTIONS)
+
+    # Limit to 2 results
+    filtered_json, count, detection_list, bbox_list, _, is_valid, error = node.query_detections(
+        input_json,
+        class_filter="*",
+        max_results=2
+    )
+
+    assert count == 2, "Should limit to 2 results"
+    assert len(bbox_list) == 2, f"bbox_list should have 2 items, got {len(bbox_list)}"
+
+    print("✓ test_bbox_list_with_max_results passed")
+
+
+def test_bbox_list_empty_when_no_matches():
+    """Test bbox_list is empty when no detections match"""
+    node = DetectionQuery()
+
+    input_json = json.dumps(SAMPLE_DETECTIONS)
+
+    # Non-existent class
+    filtered_json, count, detection_list, bbox_list, _, is_valid, error = node.query_detections(
+        input_json,
+        class_filter="NONEXISTENT_CLASS"
+    )
+
+    assert count == 0, "Should have no matches"
+    assert len(bbox_list) == 0, "bbox_list should be empty"
+    assert bbox_list == [], "bbox_list should be empty list"
+
+    print("✓ test_bbox_list_empty_when_no_matches passed")
+
+
+def test_bbox_list_handles_missing_bbox():
+    """Test bbox_list handles detections without box/bbox field"""
+    node = DetectionQuery()
+
+    # Detection without bbox field
+    detections_no_bbox = [{
+        "detect_result": [
+            {"class": "TEST_CLASS", "score": 0.9},  # No box field
+            {"class": "TEST_CLASS2", "score": 0.8, "box": [10, 20, 30, 40]}
+        ]
+    }]
+
+    input_json = json.dumps(detections_no_bbox)
+
+    filtered_json, count, detection_list, bbox_list, _, is_valid, error = node.query_detections(
+        input_json,
+        class_filter="*"
+    )
+
+    assert count == 2, "Should still count detections without bbox"
+    # bbox_list maintains alignment with detection_list by adding [0,0,0,0] for missing bboxes
+    assert len(bbox_list) == 2, f"bbox_list should have 2 items (one per detection), got {len(bbox_list)}"
+
+    # First detection has no bbox, should be [[0,0,0,0]]
+    assert bbox_list[0][0] == [0, 0, 0, 0], f"Missing bbox should be [0,0,0,0], got {bbox_list[0][0]}"
+
+    # Second detection has valid bbox
+    assert bbox_list[1][0] == [10, 20, 30, 40], "Should extract the valid bbox"
+
+    print("✓ test_bbox_list_handles_missing_bbox passed")
+
+
+def test_bbox_list_format_compatibility():
+    """Test bbox_list format is compatible with BBoxesToMask node"""
+    node = DetectionQuery()
+
+    input_json = json.dumps(SAMPLE_DETECTIONS)
+
+    filtered_json, count, detection_list, bbox_list, _, is_valid, error = node.query_detections(
+        input_json,
+        class_filter="CLASS2_*"
+    )
+
+    # Verify format: [[[x,y,w,h]], [[x,y,w,h]], ...]
+    # This is the format BBoxesToMask expects
+    assert isinstance(bbox_list, list), "Should be list"
+    assert count == 2, "Should have 2 CLASS2 detections"
+
+    for i, bbox in enumerate(bbox_list):
+        assert isinstance(bbox, list), f"bbox[{i}] should be list"
+        assert len(bbox) == 1, f"bbox[{i}] should have one element (wrapped)"
+        assert isinstance(bbox[0], list), f"bbox[{i}][0] should be list of coordinates"
+        assert len(bbox[0]) == 4, f"bbox[{i}][0] should have 4 coordinates"
+
+        # Verify all are numbers
+        for coord in bbox[0]:
+            assert isinstance(coord, (int, float)), f"Coordinates should be numbers, got {type(coord)}"
+
+    print("✓ test_bbox_list_format_compatibility passed")
+
+
 def test_return_types():
     """Validate return types"""
     node = DetectionQuery()
@@ -420,6 +592,13 @@ def run_all_tests():
         test_categorization_extraction()
         test_categorization_field_not_found()
         test_categorization_with_different_types()
+        test_bbox_list_output()
+        test_bbox_list_with_filtering()
+        test_bbox_list_with_score_filter()
+        test_bbox_list_with_max_results()
+        test_bbox_list_empty_when_no_matches()
+        test_bbox_list_handles_missing_bbox()
+        test_bbox_list_format_compatibility()
         test_return_types()
         test_input_types_structure()
         

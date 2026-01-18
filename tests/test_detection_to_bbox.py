@@ -13,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import json
 import inspect
-import torch
 from detection_to_bbox import DetectionToBBox
 
 

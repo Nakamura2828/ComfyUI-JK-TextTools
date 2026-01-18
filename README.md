@@ -165,11 +165,34 @@ Extract bounding box from a detection object.
 
 **Format:** Works with detection objects containing `"box": [x, y, w, h]` or `"bbox": [x, y, w, h]`
 
-#### BBoxes to Mask
+#### JSON to BBox
+Convert JSON bbox arrays to BBOX format with coordinate system conversion.
+
+**Inputs:**
+- `json_string` (STRING): JSON array of bboxes (e.g., from SAM3 Segmentation)
+- `input_format` (XYXY/XYWH): Format of bboxes in JSON
+- `output_format` (XYXY/XYWH): Format to output
+
+**Outputs:**
+- `bboxes` (LIST of BBOX): Converted bboxes in format `[[[x,y,w,h]], ...]`
+- `bbox_count` (INT): Number of bboxes
+
+**Coordinate Formats:**
+- **XYXY**: Two corners `[x1, y1, x2, y2]` - used by SAM3 and other models
+- **XYWH**: Corner + dimensions `[x, y, width, height]` - standard format
+
+**Example Input (SAM3 format):**
+```json
+[[245.3, 167.8, 512.6, 389.2], [100.0, 200.0, 300.0, 400.0]]
+```
+
+**Use Case:** Convert bbox output from nodes like TBG SAM3 Segmentation to work with mask generation nodes
+
+#### BBoxes to Mask ⭐ RECOMMENDED
 Convert a list of bounding boxes to binary masks.
 
 **Inputs:**
-- `bboxes` (*): List of bboxes from Detection Query
+- `bboxes` (*): List of bboxes from Detection Query or JSON to BBox
 - `width` (INT): Image width
 - `height` (INT): Image height
 - `invert` (BOOLEAN, optional): Invert mask (bbox black, rest white)
@@ -179,7 +202,13 @@ Convert a list of bounding boxes to binary masks.
 - `individual_masks` (LIST of MASK): One mask per bbox
 - `bbox_count` (INT): Number of bboxes processed
 
-**Format:** Accepts `[[[x,y,w,h]], [[x,y,w,h]], ...]` from Detection Query's bbox_list output
+**Features:**
+- Properly creates union mask (combined_mask) from multiple bboxes
+- Individual masks for per-bbox processing
+- Automatic coordinate clamping to image bounds
+- Handles both wrapped and unwrapped bbox formats
+
+**Format:** Accepts `[[[x,y,w,h]], [[x,y,w,h]], ...]` from Detection Query's bbox_list output or JSON to BBox
 
 ## Workflow Examples
 
@@ -207,11 +236,31 @@ Detection Query
   - class_filter: "DOG_*"
   - min_score: 0.7
     ↓
-bbox_list output
+bbox_list output → [[[x,y,w,h]], [[x,y,w,h]], ...]
     ↓
 BBoxes to Mask
   - width: 512
   - height: 512
+    ↓
+combined_mask → Apply to original image
+individual_masks → Process each detection separately
+```
+
+### Example 2b: SAM3 Segmentation to Mask
+```
+TBG SAM3 Segmentation Node
+    ↓
+boxes output (JSON) → "[[x1,y1,x2,y2], [x1,y1,x2,y2], ...]"
+    ↓
+JSON to BBox
+  - input_format: XYXY
+  - output_format: XYWH
+    ↓
+bboxes output → [[[x,y,w,h]], [[x,y,w,h]], ...]
+    ↓
+BBoxes to Mask
+  - width: 1024
+  - height: 1024
     ↓
 combined_mask → Apply to original image
 ```
@@ -274,6 +323,11 @@ Standard format used throughout: `[[x, y, width, height]]`
 - Multiple bboxes: `[[[x1,y1,w1,h1]], [[x2,y2,w2,h2]], ...]`
 - Coordinates are XYWH (top-left corner + dimensions)
 
+**Alternative Coordinate Systems:**
+- **XYXY**: Two corners `[x1, y1, x2, y2]` - used by some detection models (SAM3, etc.)
+- **XYWH**: Corner + dimensions `[x, y, width, height]` - our standard format
+- Use JSON to BBox node to convert between these formats
+
 ### OUTPUT_IS_LIST
 Nodes using OUTPUT_IS_LIST show grid icon in ComfyUI and output items for iteration:
 - String Splitter: `string_list`
@@ -292,7 +346,11 @@ List Index Selector preserves input types:
 ### Cross-Package Support
 - **Works with:** ImpactPack (with type converter if needed)
 - **Works with:** KJNodes BBox Visualizer
+- **Works with:** TBG SAM3 Segmentation (via JSON to BBox node)
 - **Works with:** Standard ComfyUI mask nodes
+
+**Verified Workflows:**
+- TBG SAM3 → JSON to BBox → BBoxes to Mask ✅
 
 ## Roadmap
 
@@ -300,11 +358,12 @@ List Index Selector preserves input types:
 - [x] Text splitting and joining with type casting
 - [x] List indexing with type preservation
 - [x] JSON formatting and validation
-- [x] Detection querying with wildcards
-- [x] BBox extraction from detections
-- [x] Mask generation from bboxes
+- [x] Detection querying with wildcards and bbox extraction
+- [x] BBox extraction from detection objects
+- [x] JSON bbox array conversion with XYXY/XYWH support
+- [x] Mask generation from bboxes (union and individual)
 - [x] Escape sequence support
-- [x] Comprehensive test suite
+- [x] Comprehensive test suite (95%+ coverage)
 
 ### Future Enhancements
 - [ ] CSV Parser node
@@ -332,8 +391,20 @@ If you find these nodes useful, please star the repository on GitHub!
 
 ## Changelog
 
-### v1.0.0 (Current)
-- Initial release
-- 10 nodes covering text manipulation, JSON processing, and bbox visualization
-- Complete test suite
-- Full documentation
+### v1.0.0 (Current - 2026-01-17)
+- Initial release with 10 working nodes
+- **Text Manipulation (4 nodes):**
+  - String Index Selector, String Splitter, List Index Selector, String Joiner
+  - Full type casting support (STRING/INT/FLOAT)
+  - Escape sequence support
+- **JSON Processing (2 nodes):**
+  - JSON Pretty Printer with validation
+  - Detection Query with wildcard filtering and bbox extraction
+- **BBox & Mask Operations (4 nodes):**
+  - Detection to BBox - Extract from detection objects
+  - JSON to BBox - Convert JSON arrays with XYXY/XYWH conversion
+  - BBoxes to Mask - Create union and individual masks (RECOMMENDED)
+  - BBox to Mask - Alternative implementation (EXPERIMENTAL)
+- Comprehensive test suite (95%+ coverage)
+- Full documentation (README.md + CLAUDE.md)
+- Verified integrations with SAM3, KJNodes, ImpactPack

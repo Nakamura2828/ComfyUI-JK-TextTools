@@ -21,7 +21,10 @@ from tests import (
     test_list_index_selector,
     test_string_joiner,
     test_json_pretty_printer,
-    test_detection_query
+    test_detection_query,
+    test_detection_to_bbox,
+    test_bbox_to_mask,
+    test_json_to_bbox
 )
 
 
@@ -39,6 +42,9 @@ def run_all_tests():
         ("String Joiner", test_string_joiner),
         ("JSON Pretty Printer", test_json_pretty_printer),
         ("Detection Query", test_detection_query),
+        ("Detection to BBox", test_detection_to_bbox),
+        ("BBox to Mask", test_bbox_to_mask),
+        ("JSON to BBox", test_json_to_bbox),
     ]
     
     results = []

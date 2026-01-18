@@ -188,8 +188,28 @@ Convert JSON bbox arrays to BBOX format with coordinate system conversion.
 
 **Use Case:** Convert bbox output from nodes like TBG SAM3 Segmentation to work with mask generation nodes
 
+#### BBox to Mask
+Convert a single bounding box to a binary mask. Simple 1:1 conversion.
+
+**Inputs:**
+- `bbox` (BBOX): Single bbox `[[x, y, w, h]]`
+- `width` (INT): Image width
+- `height` (INT): Image height
+- `invert` (BOOLEAN, optional): Invert mask (bbox black, rest white)
+
+**Outputs:**
+- `mask` (MASK): Binary mask for the bbox
+
+**Features:**
+- Simple single bbox → single mask conversion
+- When connected to OUTPUT_IS_LIST sources, ComfyUI automatically iterates
+- Handles both wrapped `[[x,y,w,h]]` and unwrapped `[x,y,w,h]` formats
+- Automatic coordinate clamping to image bounds
+
+**Use Case:** Single bbox to mask conversion. For multiple bboxes with union/combined mask, use BBoxes to Mask instead.
+
 #### BBoxes to Mask ⭐ RECOMMENDED
-Convert a list of bounding boxes to binary masks.
+Convert a list of bounding boxes to binary masks with union functionality.
 
 **Inputs:**
 - `bboxes` (*): List of bboxes from Detection Query or JSON to BBox
@@ -391,7 +411,16 @@ If you find these nodes useful, please star the repository on GitHub!
 
 ## Changelog
 
-### v1.0.0 (Current - 2026-01-17)
+### v1.0.1 (2026-01-17)
+- **BBox to Mask Refactored:** Simplified to single bbox → single mask converter
+  - Removed combined_mask output (use BBoxes to Mask for union functionality)
+  - Renamed individual_masks output to just "mask"
+  - Removed OUTPUT_IS_LIST - works as standard 1:1 converter
+  - ComfyUI now iterates automatically when connected to list sources
+  - Updated tests: 14 test cases validating simplified behavior
+  - No longer marked EXPERIMENTAL - clean, focused implementation
+
+### v1.0.0 (2026-01-17)
 - Initial release with 10 working nodes
 - **Text Manipulation (4 nodes):**
   - String Index Selector, String Splitter, List Index Selector, String Joiner
@@ -404,7 +433,7 @@ If you find these nodes useful, please star the repository on GitHub!
   - Detection to BBox - Extract from detection objects
   - JSON to BBox - Convert JSON arrays with XYXY/XYWH conversion
   - BBoxes to Mask - Create union and individual masks (RECOMMENDED)
-  - BBox to Mask - Alternative implementation (EXPERIMENTAL)
+  - BBox to Mask - Simple 1:1 bbox to mask converter
 - Comprehensive test suite (95%+ coverage)
 - Full documentation (README.md + CLAUDE.md)
 - Verified integrations with SAM3, KJNodes, ImpactPack

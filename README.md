@@ -9,6 +9,7 @@ Text and data manipulation nodes for ComfyUI, with emphasis on JSON processing, 
 - **Detection Workflows:** Extract and visualize bounding boxes from detection results
 - **Mask Generation:** Convert bboxes and segmentations to masks for image processing
 - **Segmentation Support:** Process SEGS format from SAM3 with filtering and union capabilities
+- **Mask to BBox Conversion:** Convert masks back to bounding boxes for chaining workflows
 
 ## Installation
 
@@ -231,6 +232,38 @@ Convert a list of bounding boxes to binary masks with union functionality.
 
 **Format:** Accepts `[[[x,y,w,h]], [[x,y,w,h]], ...]` from Detection Query's bbox_list output or JSON to BBox
 
+#### Mask to BBox ⭐ NEW
+Convert a binary mask to a bounding box.
+
+**Inputs:**
+- `mask` (MASK): Binary mask tensor
+
+**Outputs:**
+- `bbox` (BBOX): Bounding box in format `[[x, y, width, height]]`
+- `x`, `y`, `w`, `h` (INT): Individual integer coordinates
+
+**Features:**
+- Converts mask to tight bounding box
+- Uses 0.5 threshold for float masks
+- Floors all coordinates to integers
+- Handles batched masks (uses first mask)
+- Handles irregular shapes (L-shapes, non-convex masks)
+- Returns [0,0,0,0] for empty masks
+
+**Use Case:** Convert mask outputs (from detector nodes that output masks instead of proper BBOX type) to bbox format. Can chain output to other bbox nodes like BBox to SAM3 Query.
+
+**Example:**
+```
+Mask (256x256)
+  ↓
+Mask to BBox
+  ↓
+bbox: [[50, 60, 100, 80]]
+x: 50, y: 60, w: 100, h: 80 (all INT)
+  ↓
+BBox to SAM3 Query (chainable)
+```
+
 #### SEGs to Mask
 Convert SEGS (segmentation results) to binary masks with filtering and union capabilities.
 
@@ -239,7 +272,7 @@ Convert SEGS (segmentation results) to binary masks with filtering and union cap
 - `label_filter` (STRING, optional): Wildcard pattern for label filtering (default: `*`)
 - `min_confidence` (FLOAT, optional): Minimum confidence threshold (0.0-1.0, default: 0.0)
 - `min_area_percent` (FLOAT, optional): Minimum mask area as percentage of image (0.0-100.0, default: 0.0)
-- `sort_order` (default/x_then_y/y_then_x, optional): Order segments deterministically
+- `sort_order` (default/x_then_y/y_then_x/confidence_high_to_low, optional): Order segments deterministically
 - `union_same_labels` (BOOLEAN, optional): Combine segments with same label (default: True)
 - `invert` (BOOLEAN, optional): Invert mask (mask areas black, rest white)
 
@@ -280,8 +313,48 @@ Each SEG object contains:
 - `default` → Keep original order from SEGS
 - `x_then_y` → Left-to-right, then top-to-bottom
 - `y_then_x` → Top-to-bottom, then left-to-right
+- `confidence_high_to_low` → Sort by confidence score (highest first) ⭐ NEW
 
 **Use Case:** Convert SAM3 segmentation results to masks for image processing workflows
+
+#### SEGs to SAM3 Query ⭐ NEW
+Convert SEGS segmentation format to SAM3 Selector query formats.
+
+**Inputs:**
+- `segs` (SEGS): Segmentation results from TBG SAM3 Segmentation or similar nodes
+
+**Outputs:**
+- `box_query` (STRING): JSON array with bounding box for SAM3 Selector `[{"x1": 10, "y1": 20, "x2": 100, "y2": 150}]`
+- `point_query` (STRING): JSON array with weighted centroid `[{"x": 55, "y": 85}]`
+
+**Features:**
+- Generates both box and point queries for SAM3 Selector node
+- Weighted centroid calculation for accurate point queries
+- Handles multiple segments with union masks
+- Coordinates clamped to image bounds
+- Works with both ImpactPack and TBG SAM3 SEGS formats
+- Handles numpy array and tensor masks
+- Returns empty arrays `[]` for invalid inputs
+
+**Use Case:** Chain SEGS segmentation output to SAM3 Selector for iterative refinement or re-segmentation.
+
+**Example Workflow:**
+```
+TBG SAM3 Segmentation
+  ↓
+segs output → ((512, 512), [SEG(...), SEG(...), ...])
+  ↓
+SEGs to SAM3 Query
+  ↓
+box_query: [{"x1": 100, "y1": 200, "x2": 300, "y2": 400}]
+point_query: [{"x": 200, "y": 300}]
+  ↓
+TBG SAM3 Selector
+  - box_coords: box_query
+  - point_coords: point_query
+  ↓
+Refined segmentation
+```
 
 **Example Workflow:**
 ```
@@ -482,6 +555,28 @@ Issues and pull requests welcome!
 If you find these nodes useful, please star the repository on GitHub!
 
 ## Changelog
+
+### v1.2.0 (2026-01-18)
+- **NEW: Mask to BBox Node** - Convert masks to bounding boxes
+  - Converts binary masks to BBOX format in XYWH coordinates
+  - Outputs both BBOX type and individual x,y,w,h as INT values
+  - Uses 0.5 threshold for float masks
+  - Handles batched masks (uses first), irregular shapes, empty masks
+  - All coordinates floored to integers
+  - 12 comprehensive test cases
+  - Use case: Convert mask outputs to bbox format for chaining to other nodes
+- **NEW: SEGs to SAM3 Query Node** - Convert SEGS to SAM3 Selector queries
+  - Generates box_query (bounding box) and point_query (centroid) for SAM3 Selector
+  - Weighted centroid calculation for accurate point queries
+  - Handles multiple segments with union masks
+  - Full ImpactPack and TBG SAM3 compatibility
+  - 12 comprehensive test cases covering all features
+  - Use case: Chain SEGS segmentation to SAM3 Selector for iterative refinement
+- **ENHANCED: SEGs to Mask Node** - Added confidence sorting
+  - New sort_order option: "confidence_high_to_low"
+  - Sorts output masks by confidence score (highest first)
+  - Handles numpy array confidence values (ImpactPack compatibility)
+  - Updated tests: 18 test cases (was 17)
 
 ### v1.1.0 (2026-01-17)
 - **NEW: SEGs to Mask Node** - Convert SEGS segmentation format to masks

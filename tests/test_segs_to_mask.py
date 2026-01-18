@@ -266,6 +266,30 @@ def test_sort_order_x_then_y():
     print("✓ test_sort_order_x_then_y passed")
 
 
+def test_sort_order_confidence():
+    """Test sorting by confidence (high to low)"""
+    node = SEGsToMask()
+
+    mask = np.ones((20, 20), dtype=np.float32)
+
+    segs = create_mock_segs(512, 512, [
+        (mask, [10, 10, 30, 30], "seg_0", 0.75),
+        (mask, [50, 50, 70, 70], "seg_1", 0.95),
+        (mask, [100, 100, 120, 120], "seg_2", 0.60),
+    ])
+
+    combined, individual, labels, count = node.segs_to_mask(
+        segs, sort_order="confidence_high_to_low", union_same_labels=False
+    )
+
+    # Should be sorted: seg_1 (0.95), seg_0 (0.75), seg_2 (0.60)
+    assert "seg_1: 0.95" in labels[0], f"First should be seg_1 with 0.95, got {labels[0]}"
+    assert "seg_0: 0.75" in labels[1], f"Second should be seg_0 with 0.75, got {labels[1]}"
+    assert "seg_2: 0.60" in labels[2], f"Third should be seg_2 with 0.60, got {labels[2]}"
+
+    print("✓ test_sort_order_confidence passed")
+
+
 def test_sort_order_y_then_x():
     """Test sorting by y coordinate then x"""
     node = SEGsToMask()
@@ -479,6 +503,7 @@ def run_all_tests():
         test_confidence_filter()
         test_min_area_filter()
         test_sort_order_x_then_y()
+        test_sort_order_confidence()
         test_sort_order_y_then_x()
         test_invert_mode()
         test_empty_segs()

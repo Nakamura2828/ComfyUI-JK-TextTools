@@ -27,7 +27,8 @@ from tests import (
     test_json_to_bbox,
     test_segs_to_mask,
     test_bbox_to_sam3_query,
-    test_segs_to_sam3_query
+    test_segs_to_sam3_query,
+    test_mask_to_bbox
 )
 
 
@@ -51,6 +52,7 @@ def run_all_tests():
         ("SEGs to Mask", test_segs_to_mask),
         ("BBox to SAM3 Query", test_bbox_to_sam3_query),
         ("SEGs to SAM3 Query", test_segs_to_sam3_query),
+        ("Mask to BBox", test_mask_to_bbox),
     ]
     
     results = []

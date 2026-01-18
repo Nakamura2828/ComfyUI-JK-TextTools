@@ -52,7 +52,7 @@ class SEGsToMask:
                     "max": 100.0,
                     "step": 0.1
                 }),
-                "sort_order": (["default", "x_then_y", "y_then_x"], {
+                "sort_order": (["default", "x_then_y", "y_then_x", "confidence_high_to_low"], {
                     "default": "default"
                 }),
                 "union_same_labels": ("BOOLEAN", {
@@ -295,15 +295,32 @@ class SEGsToMask:
 
     def _sort_segments(self, seg_list, sort_order):
         """
-        Sort segments by position.
+        Sort segments by position or confidence.
 
         Args:
             seg_list: List of SEG objects
-            sort_order: "x_then_y" (left->right, top->bottom) or "y_then_x" (top->bottom, left->right)
+            sort_order: "x_then_y", "y_then_x", or "confidence_high_to_low"
 
         Returns:
             Sorted list of SEG objects
         """
+        if sort_order == "confidence_high_to_low":
+            # Sort by confidence (highest first)
+            def get_confidence(seg):
+                try:
+                    confidence = getattr(seg, 'confidence', 0.0)
+                    # Handle numpy array confidence (ImpactPack)
+                    if isinstance(confidence, np.ndarray):
+                        confidence = float(confidence.item())
+                    elif not isinstance(confidence, (int, float)):
+                        confidence = float(confidence)
+                    return -confidence  # Negative for descending sort
+                except Exception:
+                    return 0.0
+
+            return sorted(seg_list, key=get_confidence)
+
+        # Position-based sorting
         def get_sort_key(seg):
             # Try to get coordinates from crop_region first, fallback to bbox
             crop_region = getattr(seg, 'crop_region', None)
